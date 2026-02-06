@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leon-taxi-admin-v2.1';
+const CACHE_NAME = 'leon-taxi-admin-v2.2';
 const urlsToCache = [
   '/',
   '/icon-admin.png',
