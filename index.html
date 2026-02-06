@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Manifest PWA ADMIN -->
+    <link rel="manifest" href="/manifest-admin.json">
+    
+    <!-- Icono favicon ADMIN -->
+    <link rel="icon" type="image/png" href="/icon-admin.png">
+    
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LEON MOTO TAXI - ADMIN">
+    
+    <link rel="apple-touch-icon" href="/icon-admin.png">
+
+    <!-- FIREBASE SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- html2pdf para PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>LEON MOTO TAXI - ADMIN</title>
+    
+    <style>
+        body { 
+            background-color: #000000; 
+            color: #ffffff; 
+            font-family: sans-serif;
+            min-height: 100vh;
+        }
+        .gold-border { border: 2px solid #D4AF37; }
+        .gold-text { color: #D4AF37; }
+        .btn-yellow { 
+            background: linear-gradient(135deg, #D4AF37 0%, #FF8C00 100%);
+            color: #000000; 
+            font-weight: 800;
+        }
+        .btn-red { background-color: #DC2626; color: white; }
+        .btn-green { background-color: #10B981; color: white; }
+        .btn-blue { background-color: #2563EB; color: white; }
+        
+        /* Estado de solicitudes */
+        .solicitud-pendiente { 
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 2px solid #F59E0B;
+        }
+        .solicitud-completada { 
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 2px solid #2563EB;
+        }
+        .solicitud-cancelada { 
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.2) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 2px solid #DC2626;
+        }
+        
+        .stat-box { 
+            background: rgba(212, 175, 55, 0.1); 
+            border: 1px solid #D4AF37;
+            border-radius: 10px;
+        }
+        
+        .section-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Animaciones para notificaciones */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        /* Scroll personalizado */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #D4AF37;
+            border-radius: 4px;
+        }
+        
+        /* Transiciones suaves */
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- FIREBASE INIT -->
+    <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyBdPNU_rkwl_Hej48l4p5R2VvE-f7V0040",
+          authDomain: "leon-moto-taxi.firebaseapp.com",
+          databaseURL: "https://leon-moto-taxi-default-rtdb.firebaseio.com",
+          projectId: "leon-moto-taxi",
+          storageBucket: "leon-moto-taxi.firebasestorage.app",
+          messagingSenderId: "849438552312",
+          appId: "1:849438552312:web:3d347346146c874744d2d4",
+          measurementId: "G-95P0PKDN6M"
+        };
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            console.log("✅ Firebase inicializado");
+        } catch (error) {
+            console.error("❌ Error Firebase:", error);
+        }
+    </script>
+
+    <!-- Audio para notificaciones -->
+    <audio id="notification-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="container mx-auto px-4 py-6 max-w-6xl">
+        
+        <!-- ========== ENCABEZADO PRINCIPAL ========== -->
+        <header class="mb-8 fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-xl overflow-hidden border-2 border-yellow-500/50">
+                        <img src="/icon-admin.png" alt="Admin Icon" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-white">LEON MOTO TAXI</h1>
+                        <p class="text-xl font-bold gold-text">Panel de Administración</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-3">
+                    <!-- Botón de instalación PWA -->
+                    <div id="install-container">
+                        <button id="btn-install" 
+                                class="px-6 py-3 btn-yellow rounded-xl font-bold uppercase tracking-wide shadow-lg hover:shadow-xl active:scale-95 transition-all">
+                            📱 INSTALAR APP
+                        </button>
+                    </div>
+                    
+                    <!-- Estado de conexión -->
+                    <div class="flex items-center justify-end gap-2">
+                        <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                        <span id="status-text" class="text-green-400 text-sm font-medium">Conectado a Firebase</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ========== BOTONES PRINCIPALES DE NAVEGACIÓN ========== -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <!-- Botón Estadísticas -->
+            <button id="btn-estadisticas" 
+                    onclick="toggleSection('estadisticas')"
+                    class="py-4 px-6 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg flex items-center justify-between transition-all">
+                <span class="flex items-center gap-3">
+                    <span class="text-2xl">📊</span>
+                    <span>Estadísticas</span>
+                </span>
+                <span id="estadisticas-arrow" class="text-xl">▼</span>
+            </button>
+            
+            <!-- Botón Distribuciones -->
+            <button id="btn-distribuciones" 
+                    onclick="toggleSection('distribuciones')"
+                    class="py-4 px-6 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg flex items-center justify-between transition-all">
+                <span class="flex items-center gap-3">
+                    <span class="text-2xl">📈</span>
+                    <span>Distribuciones</span>
+                </span>
+                <span id="distribuciones-arrow" class="text-xl">▼</span>
+            </button>
+            
+            <!-- Botón Solicitudes -->
+            <button id="btn-solicitudes" 
+                    onclick="toggleSection('solicitudes')"
+                    class="py-4 px-6 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-lg flex items-center justify-between transition-all">
+                <span class="flex items-center gap-3">
+                    <span class="text-2xl">📋</span>
+                    <span>Solicitudes</span>
+                    <span id="pendientes-badge" class="bg-yellow-500 text-black text-xs px-2 py-1 rounded-full hidden">0</span>
+                </span>
+                <span id="solicitudes-arrow" class="text-xl">▼</span>
+            </button>
+        </div>
+
+        <!-- ========== SECCIÓN ESTADÍSTICAS (OCULTA POR DEFECTO) ========== -->
+        <div id="seccion-estadisticas" class="hidden fade-in mb-8">
+            <div class="section-box p-6">
+                <h2 class="text-2xl font-bold gold-text mb-6 flex items-center gap-3">
+                    📊 ESTADÍSTICAS GENERALES
+                </h2>
+                
+                <!-- Grid de estadísticas -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="stat-box p-5 text-center">
+                        <div class="text-3xl font-bold text-white mb-2" id="total-solicitudes">0</div>
+                        <div class="text-gray-300">Total</div>
+                    </div>
+                    
+                    <div class="stat-box p-5 text-center">
+                        <div class="text-3xl font-bold text-yellow-400 mb-2" id="pendientes">0</div>
+                        <div class="text-gray-300">Pendientes</div>
+                    </div>
+                    
+                    <div class="stat-box p-5 text-center">
+                        <div class="text-3xl font-bold text-blue-400 mb-2" id="completadas">0</div>
+                        <div class="text-gray-300">Completadas</div>
+                    </div>
+                    
+                    <div class="stat-box p-5 text-center">
+                        <div class="text-3xl font-bold text-red-400 mb-2" id="canceladas">0</div>
+                        <div class="text-gray-300">Canceladas</div>
+                    </div>
+                </div>
+                
+                <!-- Botones de acción para estadísticas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <button onclick="refreshStats()" 
+                            class="py-3 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-all flex items-center justify-center gap-2">
+                        🔄 Actualizar
+                    </button>
+                    
+                    <button onclick="exportToPDF()" 
+                            class="py-3 px-4 bg-red-600 hover:bg-red-700 rounded-lg font-bold transition-all flex items-center justify-center gap-2">
+                        📄 Descargar PDF
+                    </button>
+                    
+                    <button onclick="exportToExcel()" 
+                            class="py-3 px-4 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-all flex items-center justify-center gap-2">
+                        📊 Exportar Excel
+                    </button>
+                    
+                    <button onclick="backupToDevice()" 
+                            class="py-3 px-4 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-bold transition-all flex items-center justify-center gap-2">
+                        💾 Guardar Local
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== SECCIÓN DISTRIBUCIONES (OCULTA POR DEFECTO) ========== -->
+        <div id="seccion-distribuciones" class="hidden fade-in mb-8">
+            <div class="section-box p-6">
+                <h2 class="text-2xl font-bold gold-text mb-6 flex items-center gap-3">
+                    📈 DISTRIBUCIONES
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Distribución por Tipo -->
+                    <div class="stat-box p-5">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            🏍️🚗 Por Tipo de Vehículo
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-gray-300">Moto Taxi</span>
+                                    <span class="font-bold text-lg" id="stats-moto">0</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-3">
+                                    <div id="moto-bar" class="bg-blue-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-gray-300">Automóvil</span>
+                                    <span class="font-bold text-lg" id="stats-auto">0</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-3">
+                                    <div id="auto-bar" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Distribución por Servicio -->
+                    <div class="stat-box p-5">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            📊 Por Tipo de Servicio
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-gray-300">Carrera Corta</span>
+                                    <span class="font-bold text-lg" id="stats-corta">0</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-3">
+                                    <div id="corta-bar" class="bg-yellow-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-gray-300">Carrera Larga</span>
+                                    <span class="font-bold text-lg" id="stats-larga">0</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-3">
+                                    <div id="larga-bar" class="bg-orange-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-gray-300">Delivery</span>
+                                    <span class="font-bold text-lg" id="stats-delivery">0</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-3">
+                                    <div id="delivery-bar" class="bg-purple-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== SECCIÓN SOLICITUDES (OCULTA POR DEFECTO) ========== -->
+        <div id="seccion-solicitudes" class="hidden fade-in">
+            <div class="section-box p-6">
+                <!-- Encabezado con filtros -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <h2 class="text-2xl font-bold gold-text flex items-center gap-3">
+                        📋 GESTIÓN DE SOLICITUDES
+                    </h2>
+                    
+                    <!-- Filtros -->
+                    <div class="flex flex-wrap gap-3">
+                        <select id="filter-status" onchange="filterRequests()" 
+                                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg">
+                            <option value="all">📋 Todas</option>
+                            <option value="pendiente">⏳ Pendientes</option>
+                            <option value="completada">✅ Completadas</option>
+                            <option value="cancelada">❌ Canceladas</option>
+                        </select>
+                        
+                        <input type="text" id="search-phone" placeholder="Buscar teléfono..." 
+                               class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                               onkeyup="filterRequests()">
+                        
+                        <button onclick="clearFilters()" 
+                                class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                            🗑️ Limpiar
+                        </button>
+                        
+                        <button onclick="showNewRequestForm()" 
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold">
+                            ➕ Nueva
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Contadores -->
+                <div class="text-gray-400 text-sm mb-4 flex justify-between">
+                    <div>
+                        Mostrando <span id="filtered-count" class="font-bold text-white">0</span> de 
+                        <span id="total-count" class="font-bold text-white">0</span> solicitudes
+                    </div>
+                    <div>
+                        Última actualización: <span id="last-update" class="font-bold">--:--:--</span>
+                    </div>
+                </div>
+                
+                <!-- Grid de solicitudes -->
+                <div id="requests-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Las solicitudes se cargarán aquí -->
+                    <div class="col-span-full text-center py-12">
+                        <div class="text-5xl mb-4">📊</div>
+                        <p class="text-gray-400">Cargando solicitudes...</p>
+                    </div>
+                </div>
+                
+                <!-- Mensaje sin solicitudes -->
+                <div id="no-requests" class="hidden text-center py-12">
+                    <div class="text-5xl mb-4">📭</div>
+                    <h3 class="text-xl font-bold text-white mb-2">No hay solicitudes</h3>
+                    <p class="text-gray-400 mb-6">No se encontraron solicitudes con los filtros aplicados</p>
+                    <button onclick="clearFilters()" 
+                            class="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-bold">
+                        Limpiar filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pie de página -->
+        <footer class="mt-12 pt-6 border-t border-gray-800 text-center text-gray-500 text-sm">
+            <p>© 2024 LEON MOTO TAXI - Panel de Administración v2.0</p>
+            <p class="mt-1">Sistema conectado a Firebase | Datos almacenados localmente</p>
+        </footer>
+    </div>
+
+    <!-- ========== MODALES ========== -->
+
+    <!-- Modal de detalles -->
+    <div id="details-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-yellow-500/50 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold gold-text">📋 Detalles Completos</h3>
+                        <p id="modal-id" class="text-gray-400 text-sm">ID: Cargando...</p>
+                    </div>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-white text-3xl transition">×</button>
+                </div>
+                
+                <div id="modal-content" class="space-y-6"></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-8 pt-6 border-t border-gray-800">
+                    <button onclick="completeSelected()" 
+                            class="py-3 btn-green rounded-lg font-bold hover:bg-green-700 transition">
+                        ✅ Completada
+                    </button>
+                    <button onclick="cancelSelected()" 
+                            class="py-3 bg-yellow-600 rounded-lg font-bold hover:bg-yellow-700 transition">
+                        ⚠️ Cancelada
+                    </button>
+                    <button onclick="deleteSelected()" 
+                            class="py-3 btn-red rounded-lg font-bold hover:bg-red-700 transition">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para nueva solicitud -->
+    <div id="new-request-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-yellow-500/50 rounded-xl max-w-md w-full">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold gold-text">➕ Nueva Solicitud Manual</h3>
+                    <button onclick="closeNewRequestModal()" class="text-gray-400 hover:text-white text-2xl transition">×</button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Teléfono</label>
+                        <input type="tel" id="new-phone" 
+                               class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-yellow-500 outline-none transition"
+                               placeholder="0412-1234567">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-300 mb-2">Tipo de Servicio</label>
+                        <select id="new-type" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-yellow-500 outline-none transition">
+                            <option value="Moto Taxi">🏍️ Moto Taxi</option>
+                            <option value="Automóvil">🚗 Automóvil</option>
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 mt-6">
+                        <button onclick="createManualRequest()" 
+                                class="py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition">
+                            Crear
+                        </button>
+                        <button onclick="closeNewRequestModal()" 
+                                class="py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificaciones -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-3"></div>
+
+    <script>
+        // ========== VARIABLES GLOBALES ==========
+        let allRequests = {};
+        let filteredRequests = {};
+        let selectedRequestId = null;
+        let deferredPrompt = null;
+        let isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone || 
+                          document.referrer.includes('android-app://');
+        
+        // Almacenamiento local
+        const LOCAL_STORAGE_KEY = 'leon_taxi_data';
+        let pendingRequestsCount = 0;
+
+        // ========== FUNCIONES DE INTERFAZ ==========
+        function toggleSection(section) {
+            const sectionElement = document.getElementById(`seccion-${section}`);
+            const buttonElement = document.getElementById(`btn-${section}`);
+            const arrowElement = document.getElementById(`${section}-arrow`);
+            
+            // Cerrar todas las secciones primero
+            document.querySelectorAll('[id^="seccion-"]').forEach(sec => {
+                if (sec.id !== `seccion-${section}`) {
+                    sec.classList.add('hidden');
+                    const otherSection = sec.id.replace('seccion-', '');
+                    document.getElementById(`${otherSection}-arrow`).textContent = '▼';
+                }
+            });
+            
+            // Alternar la sección seleccionada
+            if (sectionElement.classList.contains('hidden')) {
+                sectionElement.classList.remove('hidden');
+                arrowElement.textContent = '▲';
+                buttonElement.classList.add('bg-gray-700');
+                
+                // Si es solicitudes, cargar datos
+                if (section === 'solicitudes') {
+                    updateRequestsList();
+                }
+            } else {
+                sectionElement.classList.add('hidden');
+                arrowElement.textContent = '▼';
+                buttonElement.classList.remove('bg-gray-700');
+            }
+        }
+
+        // ========== FUNCIONES PWA ==========
+        function updateInstallButton() {
+            const installContainer = document.getElementById('install-container');
+            
+            if (!isStandalone && deferredPrompt) {
+                installContainer.classList.remove('hidden');
+            } else if (isStandalone) {
+                installContainer.classList.add('hidden');
+            } else {
+                installContainer.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            updateInstallButton();
+        });
+
+        document.getElementById('btn-install').addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                showNotification('La app ya está instalada', 'info');
+                return;
+            }
+            
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            
+            if (outcome === 'accepted') {
+                showNotification('✅ App instalada correctamente', 'success');
+                playNotificationSound();
+            }
+            
+            deferredPrompt = null;
+            updateInstallButton();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            isStandalone = true;
+            updateInstallButton();
+        });
+
+        // ========== FUNCIONES DE SONIDO ==========
+        function playNotificationSound() {
+            try {
+                const audio = document.getElementById('notification-sound');
+                audio.currentTime = 0;
+                audio.play();
+            } catch (error) {
+                console.log('Error reproduciendo sonido:', error);
+            }
+        }
+
+        // ========== FUNCIONES DE NOTIFICACIONES ==========
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            
+            const config = {
+                success: { bg: 'bg-green-600', icon: '✅', sound: true },
+                error: { bg: 'bg-red-600', icon: '❌', sound: false },
+                warning: { bg: 'bg-yellow-600', icon: '⚠️', sound: true },
+                info: { bg: 'bg-blue-600', icon: 'ℹ️', sound: false }
+            }[type];
+            
+            notification.className = `${config.bg} text-white p-4 rounded-lg shadow-xl flex items-center gap-3 fade-in pulse-animation`;
+            notification.innerHTML = `
+                <span class="text-xl">${config.icon}</span>
+                <span class="font-medium flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="hover:text-gray-200">✕</button>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Reproducir sonido si está configurado
+            if (config.sound) {
+                playNotificationSound();
+            }
+            
+            // Auto-eliminar después de 5 segundos
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // ========== FUNCIONES DE DATOS ==========
+        async function updateStatistics() {
+            try {
+                const database = firebase.database();
+                const snapshot = await database.ref('solicitudes').once('value');
+                const data = snapshot.val();
+                
+                let total = 0, pendientes = 0, completadas = 0, canceladas = 0;
+                let motoCount = 0, autoCount = 0, cortaCount = 0, largaCount = 0, deliveryCount = 0;
+                
+                allRequests = data || {};
+                pendingRequestsCount = 0;
+                
+                if (data) {
+                    Object.values(data).forEach(request => {
+                        total++;
+                        if (request.estado === "pendiente") {
+                            pendientes++;
+                            pendingRequestsCount++;
+                        } else if (request.estado === "completada") completadas++;
+                        else if (request.estado === "cancelada") canceladas++;
+                        
+                        if (request.tipo === "Moto Taxi") motoCount++;
+                        else if (request.tipo === "Automóvil") autoCount++;
+                        
+                        if (request.modalidad === "Carrera Corta") cortaCount++;
+                        else if (request.modalidad === "Carrera Larga") largaCount++;
+                        else if (request.modalidad === "Delivery") deliveryCount++;
+                    });
+                }
+                
+                // Actualizar estadísticas
+                document.getElementById('total-solicitudes').textContent = total;
+                document.getElementById('pendientes').textContent = pendientes;
+                document.getElementById('completadas').textContent = completadas;
+                document.getElementById('canceladas').textContent = canceladas;
+                
+                // Actualizar distribuciones
+                document.getElementById('stats-moto').textContent = motoCount;
+                document.getElementById('stats-auto').textContent = autoCount;
+                document.getElementById('stats-corta').textContent = cortaCount;
+                document.getElementById('stats-larga').textContent = largaCount;
+                document.getElementById('stats-delivery').textContent = deliveryCount;
+                
+                // Actualizar barras de progreso
+                const totalTipos = motoCount + autoCount;
+                if (totalTipos > 0) {
+                    document.getElementById('moto-bar').style.width = `${(motoCount / totalTipos) * 100}%`;
+                    document.getElementById('auto-bar').style.width = `${(autoCount / totalTipos) * 100}%`;
+                }
+                
+                const totalModalidades = cortaCount + largaCount + deliveryCount;
+                if (totalModalidades > 0) {
+                    document.getElementById('corta-bar').style.width = `${(cortaCount / totalModalidades) * 100}%`;
+                    document.getElementById('larga-bar').style.width = `${(largaCount / totalModalidades) * 100}%`;
+                    document.getElementById('delivery-bar').style.width = `${(deliveryCount / totalModalidades) * 100}%`;
+                }
+                
+                // Actualizar badge de pendientes
+                const pendientesBadge = document.getElementById('pendientes-badge');
+                if (pendingRequestsCount > 0) {
+                    pendientesBadge.textContent = pendingRequestsCount;
+                    pendientesBadge.classList.remove('hidden');
+                    pendientesBadge.classList.add('pulse-animation');
+                } else {
+                    pendientesBadge.classList.add('hidden');
+                }
+                
+                // Guardar en dispositivo
+                saveToDevice();
+                
+                // Actualizar estado
+                document.getElementById('status-text').textContent = `Conectado - ${total} solicitudes`;
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status-text').textContent = 'Error de conexión';
+                showNotification('Error al conectar con Firebase', 'error');
+            }
+        }
+        
+        function saveToDevice() {
+            try {
+                const backupData = {
+                    fecha: new Date().toLocaleString('es-ES'),
+                    total: Object.keys(allRequests).length,
+                    solicitudes: allRequests,
+                    estadisticas: {
+                        pendientes: pendingRequestsCount,
+                        total: document.getElementById('total-solicitudes').textContent,
+                        completadas: document.getElementById('completadas').textContent,
+                        canceladas: document.getElementById('canceladas').textContent
+                    }
+                };
+                
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(backupData));
+                console.log('💾 Datos guardados en dispositivo');
+                
+            } catch (error) {
+                console.error('Error guardando en dispositivo:', error);
+            }
+        }
+        
+        function updateRequestsList() {
+            const requestsList = document.getElementById('requests-list');
+            const noRequests = document.getElementById('no-requests');
+            const filterStatus = document.getElementById('filter-status').value;
+            const searchPhone = document.getElementById('search-phone').value.toLowerCase();
+            
+            // Filtrar solicitudes
+            filteredRequests = {};
+            if (allRequests) {
+                Object.entries(allRequests).forEach(([id, request]) => {
+                    const matchesStatus = filterStatus === 'all' || request.estado === filterStatus;
+                    const matchesPhone = !searchPhone || (request.telefono && request.telefono.toLowerCase().includes(searchPhone));
+                    
+                    if (matchesStatus && matchesPhone) {
+                        filteredRequests[id] = request;
+                    }
+                });
+            }
+            
+            // Actualizar contadores
+            document.getElementById('filtered-count').textContent = Object.keys(filteredRequests).length;
+            document.getElementById('total-count').textContent = Object.keys(allRequests).length || 0;
+            
+            // Mostrar/ocultar mensaje
+            if (Object.keys(filteredRequests).length === 0) {
+                requestsList.classList.add('hidden');
+                noRequests.classList.remove('hidden');
+                return;
+            } else {
+                requestsList.classList.remove('hidden');
+                noRequests.classList.add('hidden');
+            }
+            
+            // Ordenar por fecha
+            const sortedEntries = Object.entries(filteredRequests).sort((a, b) => {
+                return (b[1].timestamp || 0) - (a[1].timestamp || 0);
+            });
+            
+            // Limpiar y mostrar
+            requestsList.innerHTML = '';
+            
+            sortedEntries.forEach(([id, request]) => {
+                const requestElement = document.createElement('div');
+                
+                // Determinar clase CSS según estado
+                let estadoClass = '';
+                let estadoIcon = '';
+                let estadoColor = '';
+                
+                if (request.estado === 'pendiente') {
+                    estadoClass = 'solicitud-pendiente';
+                    estadoIcon = '⏳';
+                    estadoColor = 'text-yellow-400';
+                } else if (request.estado === 'completada') {
+                    estadoClass = 'solicitud-completada';
+                    estadoIcon = '✅';
+                    estadoColor = 'text-blue-400';
+                } else {
+                    estadoClass = 'solicitud-cancelada';
+                    estadoIcon = '❌';
+                    estadoColor = 'text-red-400';
+                }
+                
+                requestElement.className = `${estadoClass} p-4 rounded-xl cursor-pointer transition-all hover:scale-[1.02]`;
+                requestElement.onclick = () => openRequestDetails(id);
+                
+                requestElement.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${request.tipo === 'Moto Taxi' ? '🏍️' : '🚗'}</span>
+                            <div>
+                                <h4 class="font-bold text-white">${request.tipo}</h4>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-sm ${estadoColor} font-bold">${estadoIcon} ${request.estado}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-1">
+                            ${request.estado === 'pendiente' ? `
+                                <button onclick="event.stopPropagation(); completeRequest('${id}')" 
+                                        class="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">
+                                    ✅
+                                </button>
+                            ` : ''}
+                            <button onclick="event.stopPropagation(); deleteRequest('${id}')" 
+                                    class="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-sm">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-400">📱</span>
+                            <span class="font-bold">${request.telefono || 'Sin teléfono'}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-400">📊</span>
+                            <span>${request.modalidad || 'Sin modalidad'}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-400">🕐</span>
+                            <span>${request.fecha || ''}</span>
+                        </div>
+                        <p class="text-gray-300 truncate" title="${request.origen || ''}">
+                            <span class="text-gray-400">📍</span> 
+                            ${(request.origen || '').substring(0, 25)}${(request.origen || '').length > 25 ? '...' : ''}
+                        </p>
+                    </div>
+                `;
+                
+                requestsList.appendChild(requestElement);
+            });
+        }
+        
+        function filterRequests() {
+            updateRequestsList();
+        }
+        
+        function clearFilters() {
+            document.getElementById('filter-status').value = 'all';
+            document.getElementById('search-phone').value = '';
+            updateRequestsList();
+            showNotification('Filtros limpiados', 'info');
+        }
+
+        // ========== FUNCIONES DE GESTIÓN ==========
+        async function completeRequest(requestId) {
+            if (!confirm('¿Marcar como COMPLETADA?')) return;
+            
+            try {
+                const database = firebase.database();
+                const request = allRequests[requestId];
+                
+                // Actualizar en Firebase
+                await database.ref(`solicitudes/${requestId}`).update({
+                    estado: "completada",
+                    fecha_completada: new Date().toLocaleString('es-ES'),
+                    timestamp_completada: Date.now()
+                });
+                
+                // Actualizar localmente
+                if (allRequests[requestId]) {
+                    allRequests[requestId].estado = "completada";
+                    allRequests[requestId].fecha_completada = new Date().toLocaleString('es-ES');
+                }
+                
+                // Guardar en dispositivo
+                saveToDevice();
+                
+                // Mostrar notificación con sonido
+                showNotification('✅ Solicitud completada', 'success');
+                
+                // Actualizar interfaz
+                updateStatistics();
+                updateRequestsList();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('❌ Error al completar', 'error');
+            }
+        }
+        
+        async function deleteRequest(requestId) {
+            if (!confirm('⚠️ ¿ELIMINAR permanentemente?')) return;
+            
+            try {
+                const database = firebase.database();
+                
+                // Guardar copia en dispositivo antes de eliminar
+                const requestCopy = { ...allRequests[requestId], eliminado: new Date().toLocaleString('es-ES') };
+                saveDeletedToDevice(requestId, requestCopy);
+                
+                // Eliminar de Firebase
+                await database.ref(`solicitudes/${requestId}`).remove();
+                
+                // Eliminar localmente
+                delete allRequests[requestId];
+                
+                // Guardar cambios en dispositivo
+                saveToDevice();
+                
+                // Mostrar notificación
+                showNotification('🗑️ Solicitud eliminada', 'warning');
+                
+                // Actualizar interfaz
+                updateStatistics();
+                updateRequestsList();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('❌ Error al eliminar', 'error');
+            }
+        }
+        
+        function saveDeletedToDevice(id, request) {
+            try {
+                const deletedKey = 'leon_taxi_eliminados';
+                let eliminados = JSON.parse(localStorage.getItem(deletedKey)) || [];
+                
+                eliminados.push({
+                    id: id,
+                    fecha_eliminacion: new Date().toLocaleString('es-ES'),
+                    datos: request
+                });
+                
+                if (eliminados.length > 500) {
+                    eliminados = eliminados.slice(-500);
+                }
+                
+                localStorage.setItem(deletedKey, JSON.stringify(eliminados));
+                
+            } catch (error) {
+                console.error('Error guardando eliminados:', error);
+            }
+        }
+
+        // ========== FUNCIONES DE EXPORTACIÓN ==========
+        function exportToPDF() {
+            try {
+                const element = document.createElement('div');
+                element.style.padding = '20px';
+                element.style.backgroundColor = 'white';
+                element.style.color = 'black';
+                
+                const fecha = new Date().toLocaleString('es-ES');
+                
+                element.innerHTML = `
+                    <h1 style="text-align: center; color: #D4AF37; font-size: 24px; margin-bottom: 20px;">
+                        LEON MOTO TAXI - REPORTE ADMIN
+                    </h1>
+                    <p style="text-align: center; margin-bottom: 30px;">Generado: ${fecha}</p>
+                    
+                    <div style="margin-bottom: 30px;">
+                        <h2 style="color: #D4AF37; border-bottom: 2px solid #D4AF37; padding-bottom: 5px;">
+                            📊 ESTADÍSTICAS
+                        </h2>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px;">
+                            <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                                <h3>Total</h3>
+                                <p style="font-size: 24px; font-weight: bold;">${document.getElementById('total-solicitudes').textContent}</p>
+                            </div>
+                            <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                                <h3>Pendientes</h3>
+                                <p style="font-size: 24px; font-weight: bold; color: #F59E0B;">${document.getElementById('pendientes').textContent}</p>
+                            </div>
+                            <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                                <h3>Completadas</h3>
+                                <p style="font-size: 24px; font-weight: bold; color: #2563EB;">${document.getElementById('completadas').textContent}</p>
+                            </div>
+                            <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                                <h3>Canceladas</h3>
+                                <p style="font-size: 24px; font-weight: bold; color: #DC2626;">${document.getElementById('canceladas').textContent}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 30px;">
+                        <h2 style="color: #D4AF37; border-bottom: 2px solid #D4AF37; padding-bottom: 5px;">
+                            📋 SOLICITUDES (${Object.keys(filteredRequests).length})
+                        </h2>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                            <thead>
+                                <tr style="background-color: #f5f5f5;">
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Tipo</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Teléfono</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Estado</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Fecha</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Modalidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Object.entries(filteredRequests).map(([id, req]) => `
+                                    <tr>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${req.tipo || ''}</td>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${req.telefono || ''}</td>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${req.estado || ''}</td>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${req.fecha || ''}</td>
+                                        <td style="border: 1px solid #ddd; padding: 8px;">${req.modalidad || ''}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px;">
+                        <p>© ${new Date().getFullYear()} LEON MOTO TAXI - Panel de Administración</p>
+                        <p>Reporte generado automáticamente</p>
+                    </div>
+                `;
+                
+                const opt = {
+                    margin: 10,
+                    filename: `reporte-leon-taxi-${new Date().toISOString().split('T')[0]}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                
+                html2pdf().set(opt).from(element).save();
+                showNotification('📄 PDF generado y descargado', 'success');
+                
+            } catch (error) {
+                console.error('Error generando PDF:', error);
+                showNotification('❌ Error al generar PDF', 'error');
+            }
+        }
+        
+        function exportToExcel() {
+            try {
+                let csv = 'Tipo,Modalidad,Teléfono,Origen,Destino,Estado,Fecha\n';
+                
+                Object.values(filteredRequests).forEach(request => {
+                    csv += `"${request.tipo || ''}","${request.modalidad || ''}","${request.telefono || ''}",`;
+                    csv += `"${(request.origen || '').replace(/"/g, '""')}","${(request.destino || '').replace(/"/g, '""')}",`;
+                    csv += `"${request.estado || ''}","${request.fecha || ''}"\n`;
+                });
+                
+                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `solicitudes-leon-taxi-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                
+                showNotification('📊 Excel exportado correctamente', 'success');
+                
+            } catch (error) {
+                console.error('Error exportando Excel:', error);
+                showNotification('❌ Error al exportar Excel', 'error');
+            }
+        }
+        
+        function backupToDevice() {
+            try {
+                const backupData = {
+                    fecha: new Date().toLocaleString('es-ES'),
+                    total: Object.keys(allRequests).length,
+                    solicitudes: allRequests,
+                    estadisticas: {
+                        pendientes: document.getElementById('pendientes').textContent,
+                        completadas: document.getElementById('completadas').textContent,
+                        canceladas: document.getElementById('canceladas').textContent
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `backup-leon-taxi-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                
+                showNotification('💾 Backup guardado en dispositivo', 'success');
+                
+            } catch (error) {
+                console.error('Error en backup:', error);
+                showNotification('❌ Error al hacer backup', 'error');
+            }
+        }
+
+        // ========== FUNCIONES DEL MODAL ==========
+        function openRequestDetails(requestId) {
+            selectedRequestId = requestId;
+            const request = allRequests[requestId];
+            
+            if (!request) return;
+            
+            document.getElementById('modal-id').textContent = `ID: ${requestId.substring(0, 12)}...`;
+            
+            const modalContent = document.getElementById('modal-content');
+            modalContent.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-gray-400 text-sm mb-2">📋 INFORMACIÓN</h4>
+                        <div class="space-y-3">
+                            <div class="p-3 bg-gray-800 rounded-lg">
+                                <p class="text-gray-400 text-xs">TIPO</p>
+                                <p class="font-bold">${request.tipo || ''} ${request.tipo === 'Moto Taxi' ? '🏍️' : '🚗'}</p>
+                            </div>
+                            <div class="p-3 bg-gray-800 rounded-lg">
+                                <p class="text-gray-400 text-xs">MODALIDAD</p>
+                                <p class="font-bold">${request.modalidad || ''}</p>
+                            </div>
+                            <div class="p-3 bg-gray-800 rounded-lg">
+                                <p class="text-gray-400 text-xs">TELÉFONO</p>
+                                <p class="font-bold">${request.telefono || ''}</p>
+                            </div>
+                            <div class="p-3 bg-gray-800 rounded-lg">
+                                <p class="text-gray-400 text-xs">ESTADO</p>
+                                <p class="font-bold ${request.estado === 'pendiente' ? 'text-yellow-400' : 
+                                                    request.estado === 'completada' ? 'text-blue-400' : 
+                                                    'text-red-400'}">
+                                    ${request.estado === 'pendiente' ? '⏳ PENDIENTE' : 
+                                     request.estado === 'completada' ? '✅ COMPLETADA' : 
+                                     '❌ CANCELADA'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-gray-400 text-sm mb-2">📅 FECHAS</h4>
+                        <div class="space-y-3">
+                            <div class="p-3 bg-gray-800 rounded-lg">
+                                <p class="text-gray-400 text-xs">FECHA CREACIÓN</p>
+                                <p class="font-bold">${request.fecha || ''}</p>
+                            </div>
+                            ${request.fecha_completada ? `
+                            <div class="p-3 bg-blue-900/30 rounded-lg">
+                                <p class="text-gray-400 text-xs">COMPLETADA</p>
+                                <p class="font-bold">${request.fecha_completada}</p>
+                            </div>
+                            ` : ''}
+                            ${request.fecha_cancelada ? `
+                            <div class="p-3 bg-red-900/30 rounded-lg">
+                                <p class="text-gray-400 text-xs">CANCELADA</p>
+                                <p class="font-bold">${request.fecha_cancelada}</p>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-gray-400 text-sm mb-2">📍 UBICACIONES</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-gray-800 rounded-lg">
+                            <p class="text-gray-400 text-xs">ORIGEN</p>
+                            <p class="font-bold">${request.origen || ''}</p>
+                        </div>
+                        <div class="p-4 bg-gray-800 rounded-lg">
+                            <p class="text-gray-400 text-xs">DESTINO</p>
+                            <p class="font-bold">${request.destino || ''}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('details-modal').classList.remove('hidden');
+        }
+        
+        function closeModal() {
+            document.getElementById('details-modal').classList.add('hidden');
+            selectedRequestId = null;
+        }
+        
+        function completeSelected() {
+            if (selectedRequestId) {
+                completeRequest(selectedRequestId);
+                closeModal();
+            }
+        }
+        
+        function deleteSelected() {
+            if (selectedRequestId) {
+                deleteRequest(selectedRequestId);
+                closeModal();
+            }
+        }
+
+        // ========== FUNCIONES UTILITARIAS ==========
+        function refreshStats() {
+            updateStatistics();
+            showNotification('Estadísticas actualizadas', 'success');
+        }
+        
+        function showNewRequestForm() {
+            document.getElementById('new-request-modal').classList.remove('hidden');
+        }
+        
+        function closeNewRequestModal() {
+            document.getElementById('new-request-modal').classList.add('hidden');
+        }
+        
+        async function createManualRequest() {
+            const phone = document.getElementById('new-phone').value.trim();
+            const type = document.getElementById('new-type').value;
+            
+            if (!phone || phone.replace(/\D/g, '').length < 10) {
+                showNotification('❌ Teléfono inválido', 'error');
+                return;
+            }
+            
+            try {
+                const database = firebase.database();
+                const newRequestRef = database.ref('solicitudes').push();
+                
+                await newRequestRef.set({
+                    tipo: type,
+                    modalidad: "Carrera Corta",
+                    telefono: phone,
+                    origen: "Manual - Administrador",
+                    destino: "Por definir",
+                    fecha: new Date().toLocaleString('es-ES'),
+                    timestamp: Date.now(),
+                    estado: "pendiente",
+                    manual: true
+                });
+                
+                showNotification('✅ Solicitud creada', 'success');
+                closeNewRequestModal();
+                updateStatistics();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('❌ Error al crear', 'error');
+            }
+        }
+
+        // ========== INICIALIZACIÓN ==========
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('✅ Admin iniciado');
+            
+            updateInstallButton();
+            await updateStatistics();
+            
+            // Escuchar cambios en Firebase
+            try {
+                const database = firebase.database();
+                database.ref('solicitudes').on('value', (snapshot) => {
+                    console.log('📡 Cambio detectado en Firebase');
+                    updateStatistics();
+                    
+                    // Notificar si hay nuevas solicitudes pendientes
+                    const data = snapshot.val();
+                    if (data) {
+                        const nuevasPendientes = Object.values(data).filter(r => r.estado === 'pendiente').length;
+                        if (nuevasPendientes > pendingRequestsCount) {
+                            showNotification(`📱 Nueva solicitud pendiente`, 'warning');
+                        }
+                    }
+                });
+            } catch (error) {
+                console.log('⚠️ Sin escucha:', error);
+            }
+            
+            // Manejar teclas
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    closeNewRequestModal();
+                }
+            });
+            
+            // Cerrar modal al hacer clic fuera
+            document.getElementById('details-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'details-modal') closeModal();
+            });
+            
+            // Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw-admin.js')
+                    .then(reg => console.log('✅ SW registrado:', reg.scope))
+                    .catch(err => console.log('❌ SW error:', err));
+            }
+            
+            // Abrir sección de solicitudes por defecto
+            setTimeout(() => {
+                toggleSection('solicitudes');
+            }, 500);
+        });
+    </script>
+</body>
+</html>
